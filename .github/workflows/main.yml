@@ -1,0 +1,37 @@
+name: ArchSQLDB1
+
+on:
+    push:
+        branches: [ master ]
+    pull_request:
+        branches: [ master ]
+    workflow_dispatch:
+
+jobs:
+    build:
+        runs-on: windows-latest
+        steps:
+        - uses: actions/checkout@v1
+        - uses: actions/upload-artifact@v2
+          with:
+             name: AzureSQLDB
+             path: ${{ github.workspace }}\Database4.dacpac
+
+
+    deploy:
+        runs-on: windows-latest
+        steps:
+        - uses: actions/checkout@v2
+        - name: create dacpac
+          run: |
+            & 'C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\msbuild.exe' kcdemodbproject.sqlproj /p:Configuration=Release
+        - uses: azure/login@v1
+          with:
+             creds: ${{ secrets.AZURE_CREDENTIALS }}
+        - name: Azure SQL Deploy
+          uses: Azure/sql-action@v1
+          with:
+            server-name: 'MYTESTSERVER.database.windows.net'
+            connection-string: '${{ secrets.AZURE_SQL_CONNECTION_STRING }}'
+            dacpac-package: ${{ github.workspace }}\bin\Release\kcdemodbproject.dacpac
+            arguments: '/p:IncludeCompositeObjects=true'   
